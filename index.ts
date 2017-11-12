@@ -32,13 +32,6 @@ async function createInternetGateway(vpc: string, tag: string): Promise<AWS.EC2.
   return ig;
 }
 
-async function createACL(params: AWS.EC2.CreateNetworkAclRequest, tag: string) {
-  console.log(`Creating ACL`);
-  let acl = await ec2.createNetworkAcl(params).promise();
-  await createTag(acl.NetworkAcl.NetworkAclId, [ { Key: "Name", Value: tag}]);
-  return await acl;
-}
-
 async function createRouteTable(params: AWS.EC2.CreateRouteTableRequest): Promise<AWS.EC2.CreateRouteTableResult> {
   console.log(`Creating RouteTable`);  
   return await ec2.createRouteTable(params).promise();
@@ -87,9 +80,8 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
       }, 
       VpcId: vpc.Vpc.VpcId 
     }).promise();
+    // Note, it's not necessary to create a Network ACL as a default will be created.
     let ig: AWS.EC2.CreateInternetGatewayResult = await createInternetGateway(vpc.Vpc.VpcId, "Internet Gateway Node");
-    createACL({ VpcId: vpc.Vpc.VpcId}, "My NetworkAcl Node");
-
     let publicRouteTable = await createRouteTable({ VpcId: vpc.Vpc.VpcId });
     createTag(publicRouteTable.RouteTable.RouteTableId, [ { Key: "Name", Value: "Public Route Table Node"}]);
     let privateRouteTable = await createRouteTable({ VpcId: vpc.Vpc.VpcId });
@@ -121,17 +113,18 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
     });
     await createRoute({
       DestinationCidrBlock: "0.0.0.0/0",
-      //NetworkInterfaceId: 
+      NetworkInterfaceId: "eni-e679a0f0",
+      InstanceId: "i-095424cbde35cb686",
       RouteTableId: privateRouteTable.RouteTable.RouteTableId,
     });
 */
-    createEndpoint({ 
-      ServiceName: "com.amazonaws.us-east-1.s3",
+    let endpoint = await createEndpoint({ 
+      ServiceName: "com.amazonaws.us-east-1.dynamodb",
       VpcEndpointType: "Gateway",
       VpcId: vpc.Vpc.VpcId,
       RouteTableIds: [ privateRouteTable.RouteTable.RouteTableId ]
     });
-    let dhcp = await createDhcpOptionSet({
+    let dhcpOptions = await createDhcpOptionSet({
       DhcpConfigurations: [ {      
         Key: "domain-name",
         Values: [ "ec2.internal" ],
@@ -141,8 +134,12 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
         Values: [ "AmazonProvidedDNS" ]
       }]
     });
-    let dhcp = createTag(dhcp.DhcpOptions.DhcpOptionsId, [ { Key: "Name", Value: "DHCP options Node" }]);
-    await ec2.associateDhcpOptions({ DhcpOptionsId: dhcp.DhcpOptions.DhcpOptionsId, VpcId: vpc.Vpc.VpcId }).promise();
+    createTag(dhcpOptions.DhcpOptions.DhcpOptionsId, [ { Key: "Name", Value: "DHCP options Node" }]);
+    await ec2.associateDhcpOptions({ DhcpOptionsId: dhcpOptions.DhcpOptions.DhcpOptionsId, VpcId: vpc.Vpc.VpcId }).promise();
+
+    // Security Groups
+    // Elastic IP
+
     process.exit(0);
   } catch(err) {
     console.log(err);
