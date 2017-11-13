@@ -3,16 +3,10 @@ import AWS = require('aws-sdk');
 
 var ec2 = new AWS.EC2({apiVersion: '2016-11-15', region: "us-east-1"});
 
-ec2.describeVpcs((err: AWS.AWSError, data: AWS.EC2.DescribeVpcsResult) => {
-//  console.log(data);
-})
-
 async function createTag(resource: string, tags: Array<AWS.EC2.Tag>): Promise<any> {
   console.log(`Creating tag, Resource: ${resource}, Tags: ${tags}`);  
   const resourceTags: AWS.EC2.CreateTagsRequest = {
-    Resources: [
-      resource
-    ], 
+    Resources: [ resource ], 
     Tags: tags
   };
   return ec2.createTags(resourceTags).promise();
@@ -60,13 +54,6 @@ async function createDhcpOptionSet(params: AWS.EC2.CreateDhcpOptionsRequest): Pr
 async function createNetworkInterface(params: AWS.EC2.CreateNetworkInterfaceRequest): Promise<AWS.EC2.CreateNetworkInterfaceResult> {
   console.log(`Creating Network Interface`);
   return await ec2.createNetworkInterface(params).promise();
-}
-
-const vpcCreateParams = {
-  CidrBlock: "10.2.0.0/16",
-  AmazonProvidedIpv6CidrBlock: false,
-  DryRun: false,
-  InstanceTenancy: "default"
 }
 
 async function createVpc(params: AWS.EC2.CreateVpcRequest) {
@@ -137,8 +124,8 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
     createTag(dhcpOptions.DhcpOptions.DhcpOptionsId, [ { Key: "Name", Value: "DHCP options Node" }]);
     await ec2.associateDhcpOptions({ DhcpOptionsId: dhcpOptions.DhcpOptions.DhcpOptionsId, VpcId: vpc.Vpc.VpcId }).promise();
 
-    // Security Groups
-    // Elastic IP
+    // TODO: Security Groups
+    // TODO: Elastic IP
 
     process.exit(0);
   } catch(err) {
@@ -147,4 +134,9 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
   }
 }
 
-createVpc(vpcCreateParams);
+createVpc({
+  CidrBlock: "10.2.0.0/16",
+  AmazonProvidedIpv6CidrBlock: false,
+  DryRun: false,
+  InstanceTenancy: "default"
+});
