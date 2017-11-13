@@ -94,7 +94,10 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
       VpcId: vpc.Vpc.VpcId,
     });
     createTag(privateSubnet.Subnet.SubnetId, [ { Key: "Name", Value: "Private Subnet Node"}]);
-/*    
+
+
+/*  
+    // TODO: Setup NAT instance
     let NetworkInterface = await createNetworkInterface({
       SubnetId: privateSubnet.Subnet.SubnetId,
     });
