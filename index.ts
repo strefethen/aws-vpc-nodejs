@@ -26,40 +26,17 @@ async function createInternetGateway(vpc: string, tag: string): Promise<AWS.EC2.
   return ig;
 }
 
-async function createRouteTable(params: AWS.EC2.CreateRouteTableRequest): Promise<AWS.EC2.CreateRouteTableResult> {
-  console.log(`Creating RouteTable`);  
-  return await ec2.createRouteTable(params).promise();
-}
-
-async function createRoute(params: AWS.EC2.CreateRouteRequest): Promise<AWS.EC2.CreateRouteResult> {
-  console.log(`Creating Route`);
-  return await ec2.createRoute(params).promise();
-}
-
-async function createSubnet(params: AWS.EC2.CreateSubnetRequest): Promise<AWS.EC2.CreateSubnetResult> {
-  console.log(`Creating Subnet`);
-  return await ec2.createSubnet(params).promise();
-}
-
-async function createEndpoint(params: AWS.EC2.CreateVpcEndpointRequest): Promise<AWS.EC2.CreateVpcEndpointResult> {
-  console.log(`Creating Endpoint`);
-  return await ec2.createVpcEndpoint(params).promise();
-}
-
-async function createDhcpOptionSet(params: AWS.EC2.CreateDhcpOptionsRequest): Promise<AWS.EC2.CreateDhcpOptionsResult> {
-  console.log(`Creating DHCP Option Set`);
-  return await ec2.createDhcpOptions(params).promise();
-} 
-
-async function createNetworkInterface(params: AWS.EC2.CreateNetworkInterfaceRequest): Promise<AWS.EC2.CreateNetworkInterfaceResult> {
-  console.log(`Creating Network Interface`);
-  return await ec2.createNetworkInterface(params).promise();
-}
-
 async function createVpc(params: AWS.EC2.CreateVpcRequest) {
   try {
     let vpc = await ec2.createVpc(params).promise();
     console.log(vpc);   
+    ec2.startInstances({
+      InstanceIds: [
+        "i-095424cbde35cb686"
+      ]
+    }, (err: AWS.AWSError, data: AWS.EC2.StartInstancesResult) => {
+      console.log(data);
+    });
     await createTag(vpc.Vpc.VpcId, [ { Key: "Name", Value: "My Cloud Node" } ]);
     await ec2.modifyVpcAttribute({ 
       EnableDnsHostnames: {
@@ -69,30 +46,30 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
     }).promise();
     // Note, it's not necessary to create a Network ACL as a default will be created.
     let ig: AWS.EC2.CreateInternetGatewayResult = await createInternetGateway(vpc.Vpc.VpcId, "Internet Gateway Node");
-    let publicRouteTable = await createRouteTable({ VpcId: vpc.Vpc.VpcId });
+    let publicRouteTable = await ec2.createRouteTable({ VpcId: vpc.Vpc.VpcId }).promise();
     createTag(publicRouteTable.RouteTable.RouteTableId, [ { Key: "Name", Value: "Public Route Table Node"}]);
-    let privateRouteTable = await createRouteTable({ VpcId: vpc.Vpc.VpcId });
+    let privateRouteTable = await ec2.createRouteTable({ VpcId: vpc.Vpc.VpcId }).promise();
     createTag(privateRouteTable.RouteTable.RouteTableId, [ { Key: "Name", Value: "Private Route Table Node"}]);
 
-    let publicSubnet = await createSubnet({
+    let publicSubnet = await ec2.createSubnet({
       CidrBlock: "10.2.0.0/24",
       AvailabilityZone: "us-east-1a",
       VpcId: vpc.Vpc.VpcId
-    });
+    }).promise();
     await ec2.associateRouteTable({RouteTableId: publicRouteTable.RouteTable.RouteTableId, SubnetId: publicSubnet.Subnet.SubnetId}).promise();
     createTag(publicSubnet.Subnet.SubnetId, [ { Key: "Name", Value: "Public Subnet Node"}])
-    createRoute({
+    ec2.createRoute({
       DestinationCidrBlock: "0.0.0.0/0",
       RouteTableId: publicRouteTable.RouteTable.RouteTableId,
       GatewayId: ig.InternetGateway.InternetGatewayId
-    });
+    }).promise();
 
     // private
-    let privateSubnet = await createSubnet({
+    let privateSubnet = await ec2.createSubnet({
       CidrBlock: "10.2.1.0/24",
       AvailabilityZone: "us-east-1a",
       VpcId: vpc.Vpc.VpcId,
-    });
+    }).promise();
     createTag(privateSubnet.Subnet.SubnetId, [ { Key: "Name", Value: "Private Subnet Node"}]);
 
 
@@ -108,13 +85,13 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
       RouteTableId: privateRouteTable.RouteTable.RouteTableId,
     });
 */
-    let endpoint = await createEndpoint({ 
+    let endpoint = await ec2.createVpcEndpoint({ 
       ServiceName: "com.amazonaws.us-east-1.dynamodb",
       VpcEndpointType: "Gateway",
       VpcId: vpc.Vpc.VpcId,
       RouteTableIds: [ privateRouteTable.RouteTable.RouteTableId ]
-    });
-    let dhcpOptions = await createDhcpOptionSet({
+    }).promise();
+    let dhcpOptions = await ec2.createDhcpOptions({
       DhcpConfigurations: [ {      
         Key: "domain-name",
         Values: [ "ec2.internal" ],
@@ -123,7 +100,7 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
         Key: "domain-name-servers",
         Values: [ "AmazonProvidedDNS" ]
       }]
-    });
+    }).promise();
     createTag(dhcpOptions.DhcpOptions.DhcpOptionsId, [ { Key: "Name", Value: "DHCP options Node" }]);
     await ec2.associateDhcpOptions({ DhcpOptionsId: dhcpOptions.DhcpOptions.DhcpOptionsId, VpcId: vpc.Vpc.VpcId }).promise();
 
