@@ -1,8 +1,23 @@
 # aws-vpc-nodejs
-This Typescript/NodeJS application that creates a Virtual Private Cloud on AWS setup as follows:
+
+## Prerequisites
+* AWS Account
+* Setup [aws-sdk](https://aws.amazon.com/sdk-for-node-js/) node package from Amazon
+
+## Run
+    $ git clone https://github.com/strefethen/aws-vpc-nodejs.git
+    $ cd aws-vpc-nodejs
+    $ npm install
+    $ tsc --project .
+    $ node built/index.js
+
+# About
+
+This Typescript/NodeJS application that creates a Virtual Private Cloud on AWS following [this scenario](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_Scenario2.html):
 
 * Creates VPC
     * Sets Enable DNS Host Names = true
+* Launches a [NAT Instance](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_NAT_Instance.html)
 * Creates Internet Gateway connected to the new VPC
 * Creates a Public Route Table
 * Creates a Private Route Table
@@ -17,14 +32,3 @@ This Typescript/NodeJS application that creates a Virtual Private Cloud on AWS s
 * Creates an Endpoint for DynamoDB access
 * Creates a DHCP Option set using DNS of "AmazonProvidedDNS"
     * Associates DHCP Option Set with VPC
-
-## Prerequisites
-* AWS Account
-* Setup [aws-sdk](https://aws.amazon.com/sdk-for-node-js/) node package from Amazon
-
-## Run
-    $ git clone https://github.com/strefethen/aws-vpc-nodejs.git
-    $ cd aws-vpc-nodejs
-    $ npm install
-    $ tsc --project .
-    $ node built/index.js
