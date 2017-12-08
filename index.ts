@@ -30,6 +30,8 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
   try {
     let vpc = await ec2.createVpc(params).promise();
     console.log(vpc);   
+
+    // Launch NAT instance
     ec2.startInstances({
       InstanceIds: [
         "i-095424cbde35cb686"
@@ -37,17 +39,22 @@ async function createVpc(params: AWS.EC2.CreateVpcRequest) {
     }, (err: AWS.AWSError, data: AWS.EC2.StartInstancesResult) => {
       console.log(data);
     });
+
     await createTag(vpc.Vpc.VpcId, [ { Key: "Name", Value: "My Cloud Node" } ]);
+
     await ec2.modifyVpcAttribute({ 
       EnableDnsHostnames: {
         Value: true 
       }, 
       VpcId: vpc.Vpc.VpcId 
     }).promise();
+
     // Note, it's not necessary to create a Network ACL as a default will be created.
     let ig: AWS.EC2.CreateInternetGatewayResult = await createInternetGateway(vpc.Vpc.VpcId, "Internet Gateway Node");
+
     let publicRouteTable = await ec2.createRouteTable({ VpcId: vpc.Vpc.VpcId }).promise();
     createTag(publicRouteTable.RouteTable.RouteTableId, [ { Key: "Name", Value: "Public Route Table Node"}]);
+
     let privateRouteTable = await ec2.createRouteTable({ VpcId: vpc.Vpc.VpcId }).promise();
     createTag(privateRouteTable.RouteTable.RouteTableId, [ { Key: "Name", Value: "Private Route Table Node"}]);
 
